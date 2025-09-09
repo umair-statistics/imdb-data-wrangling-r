@@ -1,0 +1,334 @@
+---
+title: "IMDb Movies and TV Shows – Data Wrangling in R"
+author: 'Muhammad Umair'
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Part 1
+
+```{r message=FALSE, warning=FALSE}
+#install.packages("tidyverse")
+library(dplyr)
+library(tidyverse)
+show <- read.csv("show.csv",stringsAsFactors = TRUE)
+MaturityType <- read.csv("MaturityType.csv",stringsAsFactors = TRUE)
+
+# rename all columns and remove spaces
+names(show) <- str_replace_all(names(show), " ", "")
+show$Date.Added<-as.Date(show$Date.Added,"%d/%m/%Y")
+names(MaturityType) <- str_replace_all(names(MaturityType), " ", "") 
+summary(show)
+summary(MaturityType)
+```
+
+1.2
+
+```{r message=FALSE, warning=FALSE}
+# check for duplicate rows
+if (any(duplicated(show))) {
+  # count the number of duplicate rows
+  n_duplicates <- sum(duplicated(show))
+  
+  # display the duplicate rows
+  duplicate_rows <- show[duplicated(show), ]
+  print(paste0("There are ", n_duplicates, " duplicate rows:"))
+  print(duplicate_rows)
+  
+  # remove the duplicate rows
+  show <- show[!duplicated(show), ]
+  print(paste0("After removing duplicates, the number of rows is ", nrow(show)))
+} else {
+  print("There are no duplicate rows.")
+}
+
+# modify the IMDB score column
+show$Imdb.Score <- as.numeric(sub("/10", "", show$Imdb.Score))
+```
+
+1.3
+
+```{r message=FALSE, warning=FALSE}
+# select a production country and year of interest
+Country <- "United States"
+year_of_interest <- 2019
+
+# filter the dataframe for the selected country and year
+Production.Country <- show %>% filter(Production.Country == Country, 
+                                      Release.Date == year_of_interest, 
+                                      Rating == "TV-MA")
+
+```
+
+1.4
+
+```{r message=FALSE, warning=FALSE}
+# filter the dataframe for shows with "teen" and "high school" in the description
+filtered_shows <- show %>% filter(str_detect(Description, "teen") & 
+                                    str_detect(Description, "high school"))
+
+# select the desired columns and order the dataframe by release year and IMDB score
+selected_shows <- filtered_shows %>% 
+  select(Title, Release.Date, Imdb.Score) %>% 
+  arrange(Release.Date, desc(Imdb.Score))
+
+# display the top 5 rows of the resulting dataframe
+head(selected_shows, 5)
+
+```
+
+1.5
+
+```{r message=FALSE, warning=FALSE}
+# filter the dataframe for TV shows suitable for general audiences
+filtered_shows <- show %>% filter(Rating == "TV-G")
+
+# count the number of TV shows for each production country
+country_counts <- filtered_shows %>% count(Production.Country) %>% 
+  arrange(desc(n))
+
+# select the top three production countries
+top_countries <- head(country_counts$Production.Country, 3)
+
+# for each top country, display the number of TV shows and average IMDB score
+for (country in top_countries) {
+  country_shows <- filtered_shows %>% filter(Production.Country == country)
+  num_shows <- nrow(country_shows)
+  avg_score <- mean(country_shows$Imdb.Score)
+  print(paste0(country, ": ", num_shows, " TV shows, average IMDB score: ", 
+               round(avg_score, 2)))
+}
+
+```
+1.6
+
+```{r message=FALSE, warning=FALSE}
+# filter the dataframe for movies produced after 2010 by United States and Canada
+filtered_shows <- show %>% filter(Content.Type == "Movie", Release.Date > 2010, 
+                                  (Production.Country == "United States" | 
+                                     Production.Country == "Canada"))
+
+# draw boxplots to compare the IMDB scores
+ggplot(filtered_shows, aes(x = Production.Country, y = Imdb.Score)) + 
+  geom_boxplot()
+
+```
+
+a) A ranking for children under 7 years old should take into account several factors such as age-appropriate content, positive messages, educational value, and engaging storytelling. For this purpose, we can propose a ranking based on the following two criteria:
+1. Age-appropriate content: This criterion would take into account the suitability of the content for children under 7 years old, considering factors such as violence, sexual content, and language.
+2. Educational value: This criterion would consider the educational value of the movie, such as the positive messages, moral values, and educational content that can stimulate the children's learning and development.
+
+b) Here's an example code to find the top 5 movies based on the proposed ranking:
+
+```{r message=FALSE, warning=FALSE}
+# filter the dataframe for movies suitable for children under 7 years old
+filtered_shows <- show %>% filter(Rating == "G" | Rating == "TV-Y" | 
+                                    Rating == "TV-Y7")
+
+# calculate the score for each movie based on the proposed ranking criteria
+scored_shows <- filtered_shows %>% mutate(Imdb.Score = (Rating == "G") + 
+                (Rating == "TV-Y") +  (Rating == "TV-Y7" & 
+                !str_detect(Description, "fear|scary|violence|blood|death")) +
+                (str_detect(Description, "education|learning|knowledge|positive 
+                            message|moral values|value for kids")))
+
+# select the top 5 movies with the highest score
+top_movies <- scored_shows %>% select(Title, Release.Date, Imdb.Score) %>% 
+  arrange(desc(Imdb.Score)) %>% head(5)
+
+# display the top 5 movies
+print(top_movies)
+```
+
+In the above code, we first filter the `"show"` dataframe using `filter` function from `dplyr` package to select the movies suitable for children under 7 years old. We consider the movies with ratings of "G", "TV-Y", and "TV-Y7", which are age-appropriate for children.
+
+Next, we calculate the score for each movie based on the proposed ranking criteria. For the age-appropriate content criterion, we assign a score of 1 for movies rated as "G" or "TV-Y", and a score of 2 for movies rated as "TV-Y7" and without any mention of fear, scary scenes, violence, blood, or death in the description. For the educational value criterion, we assign a score of 1 for movies with any mention of education, learning, knowledge, positive message, moral values, or value for kids in the description.
+
+Finally, we select the top 5 movies with the highest score using `select` function, order the resulting dataframe by score in descending order using `arrange` function, and display the top 5 movies using `head` function.
+
+c) Based on the proposed ranking criteria, the code above provides a list of top 5 movies that are suitable for children under 7 years old, taking into account their age-appropriate content and educational value. The proposed ranking criteria can help parents select movies that are not only entertaining but also beneficial for their children's learning and development. However, it is important to note that the proposed criteria are subjective and might not capture all aspects of what makes a movie suitable for children under 7 years old. Therefore, parents should also consider their own judgment and discretion when selecting movies for their children, and take into account factors such as their children's interests, attention span, and maturity level.
+
+# Part B
+
+2.1)
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+production <- read_excel("Production.xlsx",sheet = "Data")
+
+# Rename the columns to remove the word "Year"
+colnames(production) <- gsub("Year", "", colnames(production))
+
+# Use glimpse to show the information of the data frame
+glimpse(production)
+```
+
+2.2
+
+a)
+
+```{r message=FALSE, warning=FALSE}
+# Pivot longer the data to transform the dataframe into the desired format
+production_long <- pivot_longer(production, cols = -`Production Country / Maturity Type`,
+                   names_to = "Year", values_to = "Value") %>% drop_na(Value)
+
+```
+
+b)
+
+To split the first column into two columns and give meaningful column names, you can use the `separate()` function from the `tidyr` package. Here's how you can do it:
+
+```{r message=FALSE, warning=FALSE}
+
+# Separate the Production Country / Maturity Type column into two columns
+production_long <- separate(production_long, `Production Country / Maturity Type`, 
+                            into = c("Production Country", "Maturity Type"), sep = " / ")
+```
+
+c)
+
+To split column `"Value"` into two columns, namely `"NumProducts"` and `"Score"`, and remove the string `"/10"` from the `"Score"` column, you can use the `separate()` function from the `tidyr` package again. Here's how you can do it:
+
+```{r message=FALSE, warning=FALSE}
+production<- production_long %>%
+  separate(col = "Value", into = c("NumProducts", "Score"), sep = " - ") %>%
+  mutate(Score = as.numeric(gsub("/10", "", Score))) %>%
+  filter(!is.na(Score))
+head(production)
+```
+
+
+d)
+
+This shows that the dataset production has 507 rows and 5 columns.
+
+```{r message=FALSE, warning=FALSE}
+dim(production)
+```
+
+e)
+
+```{r message=FALSE, warning=FALSE}
+distinct(production, "Production Country", "Year") %>% 
+  summarize(
+    n_countries = n_distinct("Production Country"),
+    n_years = n_distinct("Year")
+  )
+```
+
+The output is a tibble with two columns: `n_countries` and `n_years`. The `n_distinct()` function from the dplyr package is used to count the number of unique values in each column which shows that number of unique countries and year is 1
+
+2.3)
+
+```{r message=FALSE, warning=FALSE}
+mean_score<-production %>%
+  group_by(`Production Country`) %>%
+  summarize(mean_score = mean(Score))
+
+production %>%
+  group_by(`Production Country`) %>%
+  summarize(mean_score = mean(Score)) %>%
+  filter(mean_score >= 6.8 & mean_score <= 7.0)
+```
+
+
+First, we can group the dataset by `"Production Country"` and calculate the mean of the `"Score"` column using the group_by and summarize functions
+
+This will give us the average score for each country across all years and maturity types. We can then filter the results to only include countries with an average score between 6.8 to 7.0 using the filter function
+
+This will give us the countries that have an average score between 6.8 to 7.0 across all years and maturity types in the dataset.
+
+2.4)
+
+```{r message=FALSE, warning=FALSE}
+Continent<-read_excel("Production.xlsx",sheet = "Continent")
+
+# Rename columns to "Country" and "Continent"
+colnames(Continent) <- c("Country", "Continent")
+
+# Number of countries/areas in total
+total_countries <- nrow(Continent)
+
+#Name the country coloum same as both sheet
+names(production)[1]<-"Country"
+
+countries_not_in_data <- anti_join(Continent, production, by = "Country")
+
+# Number of countries not in the Data sheet
+num_countries_not_in_data <- nrow(countries_not_in_data)
+```
+
+2.5)
+
+
+
+To rank the Asian countries to support the decision-making of Netflix to target an Asian country to grow their market, I would suggest the following criterion:
+
+1. Population Size: One of the key criteria could be the population size of a country. Since a larger population means a larger potential customer base, it can be a significant factor in deciding which Asian country to target. For example, India and China have the two largest populations in the world and could be good targets for Netflix.
+
+2. Internet Penetration Rate: Another important factor could be the internet penetration rate of the country. Countries with a higher internet penetration rate could be more receptive to online streaming services like Netflix. For example, South Korea and Japan have some of the highest internet penetration rates in the world and could be good targets for Netflix.
+
+3. Income Level: The income level of a country could also be an important factor. Countries with higher incomes are more likely to have disposable income to spend on entertainment services like Netflix. For example, Singapore and Hong Kong have high per capita income levels and could be good targets for Netflix.
+
+4. Availability of Local Content: The availability of local content could also be an important factor in deciding which Asian country to target. Countries with a larger and more diverse range of local content could be more attractive to viewers. For example, South Korea has a thriving entertainment industry and could be a good target for Netflix due to the popularity of its dramas and music.
+
+Overall, a combination of these criteria could be used to rank the Asian countries and help Netflix make an informed decision on which country to target to grow their market.
+
+b)
+
+```{r message=FALSE, warning=FALSE}
+# Merge the two dataframes
+merged_data <- inner_join(production, Continent, by = "Country")
+
+# Filter for Asian countries only
+asian_data <- merged_data %>% filter(Continent == "Asia")
+
+# Calculate the average score of TV-MA maturity type for each country
+asian_scores <- asian_data %>% 
+  filter(`Maturity Type` == "TV-MA") %>% 
+  group_by(Country) %>% 
+  summarize(avg_score = mean(Score, na.rm = TRUE)) %>% 
+  ungroup()
+
+# Rank the Asian countries based on the average score of TV-MA maturity type
+ranked_data <- asian_scores %>% 
+  arrange(desc(avg_score))
+
+# Print the top five Asian countries
+top_five <- head(ranked_data$Country, 5)
+print(top_five)
+```
+
+This code loads the production data and the continent data, merges them by the `"Country"` column, filters for Asian countries only, calculates the average score of TV-MA maturity type for each country, ranks the Asian countries based on this criterion, and prints the top five Asian countries.
+
+c)
+
+```{r message=FALSE, warning=FALSE}
+country_scores <- asian_data %>% 
+  group_by(Country) %>% 
+  summarize(avg_score = mean(Score, na.rm = TRUE)) %>% 
+  arrange(desc(avg_score)) %>% 
+  top_n(5)
+
+# create a bar chart
+ggplot(country_scores, aes(x = reorder(Country, avg_score), y = avg_score)) +
+  geom_col(fill = "lightblue", width = 0.5) +
+  xlab("Country") +
+  ylab("Average Score") +
+  ggtitle("Top 5 Asian countries based on the proposed ranking criterion") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+```
+
+
+d)
+
+Based on the analysis, it appears that Israel, Labanon, Japan, Bangladesh, and China are the top five countries to target for Netflix to further grow their market in Asia. These countries have the highest scores in terms of the criterion proposed, which takes into account both the popularity and quality of Netflix productions. It is interesting to note that these countries are also highly developed and technologically advanced, which may contribute to their receptiveness to streaming services like Netflix.
+
