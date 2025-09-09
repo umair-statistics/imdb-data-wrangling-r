@@ -6,6 +6,11 @@ The project demonstrates advanced data manipulation and wrangling techniques in 
 
 ---
 
+[![Made with R](https://img.shields.io/badge/Made%20with-R-blue?style=flat&logo=r)](https://www.r-project.org/)
+[![tidyverse](https://img.shields.io/badge/Package-tidyverse-green?style=flat&logo=r)](https://www.tidyverse.org/)
+[![ggplot2](https://img.shields.io/badge/Visualization-ggplot2-orange?style=flat&logo=r)](https://ggplot2.tidyverse.org/)
+[![License: CC0-1.0](https://img.shields.io/badge/License-CC0%201.0-lightgrey.svg)](LICENSE)
+
 ## Project Overview
 
 The project involves:
@@ -97,5 +102,3 @@ This project is for **educational purposes** (university assignment).
 Feel free to reference but not to copy directly for submissions.
 
 ---
-
-Do you want me to make this **GitHub-friendly with badges** (R version, tidyverse, ggplot2, license) at the top, so it looks polished like open-source repos?
